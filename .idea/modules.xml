@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Comanda_Facil_Pro_Plus.iml" filepath="$PROJECT_DIR$/.idea/modules/Comanda_Facil_Pro_Plus.iml" group="Comanda_Facil_Pro_Plus" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/app.iml" group="Comanda_Facil Pro Plus/app" />
+    </modules>
+  </component>
+</project>
