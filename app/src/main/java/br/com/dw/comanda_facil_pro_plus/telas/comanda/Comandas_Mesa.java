@@ -16,35 +16,45 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.j256.ormlite.dao.Dao;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 import br.com.dw.comanda_facil_pro_plus.R;
 import br.com.dw.comanda_facil_pro_plus.adapters.Adp_ComandasMesas;
-import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
-import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda;
-import br.com.dw.comanda_facil_pro_plus.dao.Dao_Mesa;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.entidades.Comanda;
 import br.com.dw.comanda_facil_pro_plus.entidades.Mesa;
 
+
 public class Comandas_Mesa extends AppCompatActivity implements AdapterView.OnItemClickListener,AdapterView.OnItemLongClickListener {
-    DatabaseHelper banco;
-    Dao_Comanda dao_comanda;
-    Dao_Mesa dao_mesa;
+    final Conexao conexao = new Conexao();
+    Dao dao_comanda;
+    Dao dao_mesa;
+
     Mesa mesa;
     TextView mesaselecionada;
     List<Comanda> comandas = new ArrayList<>();
-    List<Comanda> totalgeralcomadas = new ArrayList<>();
     int idmesa;
     ListView listView;
     Adp_ComandasMesas adp_comandasMesas;
     int n = 0;
     private AlertDialog alerta;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_comanda);
+
+        try {
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_comanda = conexao.getDao(Comanda.class);
+            dao_mesa = conexao.getDao(Mesa.class);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
 
         mesaselecionada = findViewById(R.id.mesaselecionada);
         listView = findViewById(R.id.listvew_pedidos);
@@ -71,30 +81,44 @@ public class Comandas_Mesa extends AppCompatActivity implements AdapterView.OnIt
         Bundle bundle = getIntent().getExtras();
         if (bundle != null && bundle.containsKey("id")) {
             idmesa = bundle.getInt("id");
-            banco = new DatabaseHelper(this);
+
+            Thread thread= new Thread(){
+                @Override public void run() {
+                    try {
+                        mesa = (Mesa) dao_mesa.queryForId(idmesa);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            thread.start();
+            long delayMillis = 5000;
             try {
-                dao_mesa = new Dao_Mesa(banco.getConnectionSource());
-                mesa = dao_mesa.queryForId(idmesa);
-                mesaselecionada.setText(mesa.getDescricao());
+                thread.join(delayMillis);
+                if (thread.isAlive()) {}
+            } catch (InterruptedException e){}
 
-                Object[] status = {"ABERTO","PARCIAL","ATENDIDO"};
-                dao_comanda = new Dao_Comanda(banco.getConnectionSource());
-                comandas = dao_comanda.queryBuilder().where().eq("mesa",idmesa).and().in("status",status).query();
-                adp_comandasMesas = new Adp_ComandasMesas(this,comandas);
-                listView.setAdapter(adp_comandasMesas);
+            mesaselecionada.setText(mesa.getDescricao());
+            final Object[] status = {"ABERTO","PARCIAL","ATENDIDO"};
 
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            Thread thread2= new Thread(){
+                @Override public void run() {
+                    try {
+                        comandas = dao_comanda.queryBuilder().where().eq("mesa",idmesa).and().in("status",status).query();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            thread2.start();
+            try {
+                thread2.join(delayMillis);
+                if (thread2.isAlive()) {}
+            } catch (InterruptedException e){}
 
-        }
+            adp_comandasMesas = new Adp_ComandasMesas(this,comandas);
+            listView.setAdapter(adp_comandasMesas);
 
-        try {
-            //pega total de comandas do sistema
-            totalgeralcomadas.clear();
-            totalgeralcomadas = dao_comanda.queryForAll();
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 

@@ -16,6 +16,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.view.View;
@@ -41,6 +42,7 @@ import com.itextpdf.text.pdf.PdfContentByte;
 import com.itextpdf.text.pdf.PdfPageEvent;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.text.pdf.draw.LineSeparator;
+import com.j256.ormlite.dao.Dao;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -56,6 +58,7 @@ import java.util.List;
 
 import br.com.dw.comanda_facil_pro_plus.R;
 import br.com.dw.comanda_facil_pro_plus.adapters.Adp_ComandaItem;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda_Item;
@@ -63,6 +66,7 @@ import br.com.dw.comanda_facil_pro_plus.dao.Dao_Mesa;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Produto;
 import br.com.dw.comanda_facil_pro_plus.entidades.Comanda;
 import br.com.dw.comanda_facil_pro_plus.entidades.Comanda_Item;
+import br.com.dw.comanda_facil_pro_plus.entidades.Mesa;
 import br.com.dw.comanda_facil_pro_plus.entidades.Produto;
 
 public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
@@ -71,14 +75,15 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
     TextView vltotal;
     ListView listView;
 
-    DatabaseHelper banco;
+    final Conexao conexao = new Conexao();
+    Dao dao_comanda;
+    Dao dao_comanda_item;
+    Dao dao_mesa;
+    Dao dao_produto;
+
     Comanda comanda = new Comanda();
     Comanda_Item comanda_item;
     List<Comanda_Item> comanda_itens = new ArrayList<>();
-    Dao_Comanda dao_comanda;
-    Dao_Comanda_Item dao_comanda_item;
-    Dao_Mesa dao_mesa;
-    Dao_Produto dao_produto;
     Adp_ComandaItem adp_comandaItem;
     Produto produto;
     private AlertDialog alerta;
@@ -106,12 +111,13 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
         listView = findViewById(R.id.listview_itens);
         listView.setOnItemClickListener(this);
         listView.setOnItemLongClickListener(this);
-        banco = new DatabaseHelper(this);
+
         try {
-            dao_comanda = new Dao_Comanda(banco.getConnectionSource());
-            dao_comanda_item = new Dao_Comanda_Item(banco.getConnectionSource());
-            dao_mesa = new Dao_Mesa(banco.getConnectionSource());
-            dao_produto = new Dao_Produto(banco.getConnectionSource());
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_comanda = conexao.getDao(Comanda.class);
+            dao_mesa = conexao.getDao(Mesa.class);
+            dao_produto = conexao.getDao(Produto.class);
+            dao_comanda_item = conexao.getDao(Comanda_Item.class);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -308,20 +314,30 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
 
     public void fecharcomanda(View view){
         if(comanda_itens.size()>0) {
-            try {
-                calculatotal();
-                dao_comanda.createOrUpdate(comanda);
-                if (comanda.getStatus().equals("ATENDIDO")) {
-                    Intent intent = new Intent(this, Comanda_Pagamento.class);
-                    intent.putExtra("idcomanda",comanda.getId());
-                    startActivity(intent);
-                    finish();
-                } else {
-                    Toast.makeText(activity, "Existe produto não atendido ! Verifique ", Toast.LENGTH_LONG).show();
+            calculatotal();
+            Thread thread= new Thread(){
+                @Override public void run() {
+                    try {
+                        dao_comanda.createOrUpdate(comanda);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
                 }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                Toast.makeText(activity, "Erro", Toast.LENGTH_SHORT).show();
+            };
+            thread.start();
+            long delayMillis = 5000;
+            try {
+                thread.join(delayMillis);
+                if (thread.isAlive()) {}
+            } catch (InterruptedException e){}
+
+            if (comanda.getStatus().equals("ATENDIDO")) {
+                Intent intent = new Intent(this, Comanda_Pagamento.class);
+                intent.putExtra("idcomanda",comanda.getId());
+                startActivity(intent);
+                finish();
+            } else {
+                Toast.makeText(activity, "Existe produto não atendido ! Verifique ", Toast.LENGTH_LONG).show();
             }
         }else{
             Toast.makeText(activity, "Não há produto inserido !", Toast.LENGTH_SHORT).show();
@@ -357,24 +373,76 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
                                         item.setStatus("ATENDIDO");
                                         item.setQtde_atendido(item.getQtde_atendido()+q);
                                         item.setData_entrega(new Date());
+                                        Thread thread= new Thread(){
+                                            @Override public void run() {
+                                                try {
+                                                    dao_comanda_item.createOrUpdate(item);
+                                                } catch (SQLException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        };
+                                        thread.start();
+                                        long delayMillis = 5000;
                                         try {
-                                            dao_comanda_item.createOrUpdate(item);
-                                            calculatotal();
-                                            dao_comanda.createOrUpdate(comanda);
-                                        } catch (SQLException e) {
-                                            e.printStackTrace();
-                                        }
+                                            thread.join(delayMillis);
+                                            if (thread.isAlive()) {}else{
+                                                calculatotal();
+                                            }
+                                        } catch (InterruptedException e){}
+
+                                        Thread thread5= new Thread(){
+                                            @Override public void run() {
+                                                try {
+                                                    dao_comanda.createOrUpdate(comanda);
+                                                } catch (SQLException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        };
+                                        thread5.start();
+                                        try {
+                                            thread5.join(delayMillis);
+                                            if (thread5.isAlive()) {}
+                                        } catch (InterruptedException e){}
                                     }else if (q+item.getQtde_atendido() < item.getQtde()){
                                         item.setStatus("PARCIAL");
                                         item.setQtde_atendido(item.getQtde_atendido()+q);
                                         item.setData_entrega(new Date());
+
+                                        Thread thread= new Thread(){
+                                            @Override public void run() {
+                                                try {
+                                                    dao_comanda_item.createOrUpdate(item);
+                                                } catch (SQLException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        };
+                                        thread.start();
+                                        long delayMillis = 5000;
                                         try {
-                                            dao_comanda_item.createOrUpdate(item);
-                                            calculatotal();
-                                            dao_comanda.createOrUpdate(comanda);
-                                        } catch (SQLException e) {
-                                            e.printStackTrace();
-                                        }
+                                            thread.join(delayMillis);
+                                            if (thread.isAlive()) {}
+                                        } catch (InterruptedException e){}
+
+                                        calculatotal();
+
+                                        Thread thread5= new Thread(){
+                                            @Override public void run() {
+                                                try {
+                                                    dao_comanda.createOrUpdate(comanda);
+                                                } catch (SQLException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        };
+                                        thread5.start();
+                                        try {
+                                            thread5.join(delayMillis);
+                                            if (thread5.isAlive()) {}
+                                        } catch (InterruptedException e){}
+
                                     }else{
                                         Toast.makeText(Comanda_Pedido.this, "Quantidade invalida !", Toast.LENGTH_SHORT).show();
                                     }
@@ -396,14 +464,40 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
                         mensagem.setMessage("Confirma Exclusão ?");
                         mensagem.setPositiveButton("Sim", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
+                                Thread thread= new Thread(){
+                                    @Override public void run() {
+                                        try {
+                                            dao_comanda_item.delete(item);
+                                        } catch (SQLException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                };
+                                thread.start();
+                                long delayMillis = 5000;
                                 try {
-                                    dao_comanda_item.delete(item);
-                                    calculatotal();
-                                    dao_comanda.createOrUpdate(comanda);
-                                    Toast.makeText(Comanda_Pedido.this, "Excluido com Sucesso !", Toast.LENGTH_SHORT).show();
-                                } catch (SQLException e) {
-                                    e.printStackTrace();
-                                }
+                                    thread.join(delayMillis);
+                                    if (thread.isAlive()) {}
+                                } catch (InterruptedException e){}
+
+                                calculatotal();
+
+                                Thread thread5= new Thread(){
+                                    @Override public void run() {
+                                        try {
+                                            dao_comanda.createOrUpdate(comanda);
+                                        } catch (SQLException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                };
+                                thread5.start();
+                                try {
+                                    thread5.join(delayMillis);
+                                    if (thread5.isAlive()) {}
+                                } catch (InterruptedException e){}
+
+                                Toast.makeText(Comanda_Pedido.this, "Excluido com Sucesso !", Toast.LENGTH_SHORT).show();
                             }
                         });
                         mensagem.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
@@ -439,27 +533,53 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
             public void onClick(DialogInterface dialog, int which) {
                 if(input.getText().length()>0 ) {
                     if (Integer.parseInt(input.getText().toString()) > 0) {
-                        try {
 
-                            if (item.getStatus().equals("ATENDIDO") && Integer.parseInt(input.getText().toString()) > item.getQtde()) {
-                                item.setStatus("PARCIAL");
-                                item.setQtde(Integer.parseInt(input.getText().toString()));
-                            }else if (item.getStatus().equals("ATENDIDO") && Integer.parseInt(input.getText().toString()) < item.getQtde()) {
-                                //não muda a quantidade nem o status
-                                Toast.makeText(Comanda_Pedido.this, "Item ja entregue !", Toast.LENGTH_SHORT).show();
-                            }else{
-                                item.setQtde(Integer.parseInt(input.getText().toString()));
-                            }
-                            double total = item.getValor_unitario() * item.getQtde();
-                            df.format(total);
-                            item.setValor_total(total);
-                            item.setData_pedido(new Date());
-                            dao_comanda_item.createOrUpdate(item);
-                            calculatotal();
-                            dao_comanda.createOrUpdate(comanda);
-                        } catch (SQLException e) {
-                            e.printStackTrace();
+                        if (item.getStatus().equals("ATENDIDO") && Integer.parseInt(input.getText().toString()) > item.getQtde()) {
+                            item.setStatus("PARCIAL");
+                            item.setQtde(Integer.parseInt(input.getText().toString()));
+                        }else if (item.getStatus().equals("ATENDIDO") && Integer.parseInt(input.getText().toString()) < item.getQtde()) {
+                            //não muda a quantidade nem o status
+                            Toast.makeText(Comanda_Pedido.this, "Item ja entregue !", Toast.LENGTH_SHORT).show();
+                        }else{
+                            item.setQtde(Integer.parseInt(input.getText().toString()));
                         }
+                        double total = item.getValor_unitario() * item.getQtde();
+                        df.format(total);
+                        item.setValor_total(total);
+                        item.setData_pedido(new Date());
+
+                        Thread thread= new Thread(){
+                            @Override public void run() {
+                                try {
+                                    dao_comanda_item.createOrUpdate(item);
+                                } catch (SQLException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        };
+                        thread.start();
+                        long delayMillis = 5000;
+                        try {
+                            thread.join(delayMillis);
+                            if (thread.isAlive()) {}
+                        } catch (InterruptedException e){ e.printStackTrace();}
+
+                        calculatotal();
+
+                        Thread thread5= new Thread(){
+                            @Override public void run() {
+                                try {
+                                    dao_comanda.createOrUpdate(comanda);
+                                } catch (SQLException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        };
+                        thread5.start();
+                        try {
+                            thread5.join(delayMillis);
+                            if (thread5.isAlive()) {}
+                        } catch (InterruptedException e){ e.printStackTrace();}
                     } else {
                         Toast.makeText(Comanda_Pedido.this, "Quantidade invalida !", Toast.LENGTH_SHORT).show();
                     }
@@ -484,63 +604,98 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
         if(v==1){
             SharedPreferences lt = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             SharedPreferences.Editor editor = lt.edit();
-            String t = lt.getString("idproduto","vazio");
+            final String t = lt.getString("idproduto","vazio");
             editor.putString("idproduto", "vazio");
             editor.commit();
             if (!t.equals("vazio")) {
 
+                produto = new Produto();
+                Thread thread= new Thread(){
+                    @Override public void run() {
+                        try {
+                            produto = (Produto) dao_produto.queryForId(Integer.parseInt(t));
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                };
+                thread.start();
+                long delayMillis = 5000;
                 try {
-                    produto = new Produto();
-                    produto = dao_produto.queryForId(Integer.parseInt(t));
+                    thread.join(delayMillis);
+                    if (thread.isAlive()) {}
+                } catch (InterruptedException e){}
 
-                    AlertDialog.Builder mensagem = new AlertDialog.Builder(this);
-                    mensagem.setTitle(produto.getDescricao());
-                    mensagem.setMessage("Digite a quantidade:");
-                    // DECLARACAO DO EDITTEXT
-                    final EditText input = new EditText(this);
-                    input.setInputType(InputType.TYPE_CLASS_NUMBER);
-                    mensagem.setView(input);
-                    mensagem.setPositiveButton("Adicionar", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            if(input.getText().length()>0) {
-                                if (Integer.parseInt(input.getText().toString()) > 0) {
-                                    try {
-                                        comanda_item = new Comanda_Item();
-                                        comanda_item.setComanda(comanda);
-                                        comanda_item.setProduto(produto);
-                                        comanda_item.setQtde(Integer.parseInt(input.getText().toString()));
-                                        comanda_item.setValor_unitario(produto.getValor());
-                                        double total = produto.getValor() * comanda_item.getQtde();
-                                        df.format(total);
-                                        comanda_item.setValor_total(total);
-                                        comanda_item.setStatus("ABERTO");
-                                        comanda_item.setData_pedido(new Date());
-                                        comanda_item.setQtde_atendido(0);
-                                        dao_comanda_item.createOrUpdate(comanda_item);
-                                        calculatotal();
-                                        dao_comanda.createOrUpdate(comanda);
-                                    } catch (SQLException e) {
-                                        e.printStackTrace();
+                AlertDialog.Builder mensagem = new AlertDialog.Builder(this);
+                mensagem.setTitle(produto.getDescricao());
+                mensagem.setMessage("Digite a quantidade:");
+                // DECLARACAO DO EDITTEXT
+                final EditText input = new EditText(this);
+                input.setInputType(InputType.TYPE_CLASS_NUMBER);
+                mensagem.setView(input);
+                mensagem.setPositiveButton("Adicionar", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        if(input.getText().length()>0) {
+                            if (Integer.parseInt(input.getText().toString()) > 0) {
+                                comanda_item = new Comanda_Item();
+                                comanda_item.setComanda(comanda);
+                                comanda_item.setProduto(produto);
+                                comanda_item.setQtde(Integer.parseInt(input.getText().toString()));
+                                comanda_item.setValor_unitario(produto.getValor());
+                                double total = produto.getValor() * comanda_item.getQtde();
+                                df.format(total);
+                                comanda_item.setValor_total(total);
+                                comanda_item.setStatus("ABERTO");
+                                comanda_item.setData_pedido(new Date());
+                                comanda_item.setQtde_atendido(0);
+                                Thread thread= new Thread(){
+                                    @Override public void run() {
+                                        try {
+                                            dao_comanda_item.createOrUpdate(comanda_item);
+                                        } catch (SQLException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
-                                } else {
-                                    Toast.makeText(Comanda_Pedido.this, "Quantidade invalida !", Toast.LENGTH_SHORT).show();
-                                }
-                            }else {
+                                };
+                                thread.start();
+                                long delayMillis = 5000;
+                                try {
+                                    thread.join(delayMillis);
+                                    if (thread.isAlive()) {}
+                                } catch (InterruptedException e){}
+
+                                calculatotal();
+
+                                Thread thread5= new Thread(){
+                                    @Override public void run() {
+                                        try {
+                                            dao_comanda.createOrUpdate(comanda);
+                                        } catch (SQLException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                };
+                                thread5.start();
+                                try {
+                                    thread5.join(delayMillis);
+                                    if (thread5.isAlive()) {}
+                                } catch (InterruptedException e){}
+                            } else {
                                 Toast.makeText(Comanda_Pedido.this, "Quantidade invalida !", Toast.LENGTH_SHORT).show();
                             }
+                        }else {
+                            Toast.makeText(Comanda_Pedido.this, "Quantidade invalida !", Toast.LENGTH_SHORT).show();
                         }
+                    }
 
-                    });
-                    mensagem.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
+                });
+                mensagem.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
 
-                        }
-                    });
-                    mensagem.show();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
+                    }
+                });
+                mensagem.show();
             }else {
                 Toast.makeText(this, "Produto invalido", Toast.LENGTH_SHORT).show();
             }
@@ -552,23 +707,34 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
 
         if(v == 0) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-            Bundle bundle = getIntent().getExtras();
+            final Bundle bundle = getIntent().getExtras();
             if (bundle != null && bundle.containsKey("idcomanda")) {
+                Thread thread= new Thread(){
+                    @Override public void run() {
+                        try {
+                            comanda = (Comanda) dao_comanda.queryForId(bundle.getInt("idcomanda"));
+                            comanda_itens = dao_comanda_item.queryBuilder().where().eq("comanda", comanda.getId()).query();
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                };
+                thread.start();
+                long delayMillis = 5000;
                 try {
-                    comanda = dao_comanda.queryForId(bundle.getInt("idcomanda"));
-                    comanda_itens = dao_comanda_item.queryBuilder().where().eq("comanda", comanda.getId()).query();
-                    cliente.setText(comanda.getCliente());
-                    qtdepessoas.setText(comanda.getQtde_pessoas().toString());
-                    dataabertura.setText(sdf.format(comanda.getData_abertura()));
-                    vltotal.setText(df.format(comanda.getValor_total()));
+                    thread.join(delayMillis);
+                    if (thread.isAlive()) {}
+                } catch (InterruptedException e){}
 
-                    adp_comandaItem = new Adp_ComandaItem(this, comanda_itens);
-                    listView.setAdapter(adp_comandaItem);
-                    idmesa = comanda.getMesa().getId();
-                    calculatotal();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
+                cliente.setText(comanda.getCliente());
+                qtdepessoas.setText(comanda.getQtde_pessoas().toString());
+                dataabertura.setText(sdf.format(comanda.getData_abertura()));
+                vltotal.setText(df.format(comanda.getValor_total()));
+
+                adp_comandaItem = new Adp_ComandaItem(this, comanda_itens);
+                listView.setAdapter(adp_comandaItem);
+                idmesa = comanda.getMesa().getId();
+                calculatotal();
 
             }
         }
@@ -577,22 +743,47 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
     public void salvarcomanda(View view) throws ParseException {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
         if(cliente.getText().length() > 0 && qtdepessoas.getText().length()>0){
-            try {
-                comanda.setCliente(cliente.getText().toString().toUpperCase());
-                comanda.setQtde_pessoas(Integer.parseInt(qtdepessoas.getText().toString()));
-                comanda.setMesa(dao_mesa.queryForId(idmesa));
-                d = sdf.parse(String.valueOf(dataabertura.getText()));
-                comanda.setData_abertura(d);
-                comanda.setData_abertura_long(d);
-                if(comanda.getStatus()==null){
-                    comanda.setStatus("ABERTO");
+            comanda.setCliente(cliente.getText().toString().toUpperCase());
+            comanda.setQtde_pessoas(Integer.parseInt(qtdepessoas.getText().toString()));
+
+            Thread thread= new Thread(){
+                @Override public void run() {
+                    try {
+                        comanda.setMesa((Mesa) dao_mesa.queryForId(idmesa));
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
                 }
-                calculatotal();
-                dao_comanda.createOrUpdate(comanda);
-                finish();
-            } catch (SQLException e) {
-                e.printStackTrace();
+            };
+            thread.start();
+            long delayMillis = 5000;
+            try {
+                thread.join(delayMillis);
+                if (thread.isAlive()) {}
+            } catch (InterruptedException e){}
+
+            d = sdf.parse(String.valueOf(dataabertura.getText()));
+            comanda.setData_abertura(d);
+            comanda.setData_abertura_long(d);
+            if(comanda.getStatus()==null){
+                comanda.setStatus("ABERTO");
             }
+            calculatotal();
+            Thread thread2= new Thread(){
+                @Override public void run() {
+                    try {
+                        dao_comanda.createOrUpdate(comanda);
+                        finish();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            thread2.start();
+            try {
+                thread2.join(delayMillis);
+                if (thread2.isAlive()) {}
+            } catch (InterruptedException e){}
         }else{
             Toast.makeText(this, "Preencha os dados minimos !", Toast.LENGTH_SHORT).show();
         }
@@ -604,13 +795,43 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
             try {
                 comanda.setCliente(cliente.getText().toString().toUpperCase());
                 comanda.setQtde_pessoas(Integer.parseInt(qtdepessoas.getText().toString()));
-                comanda.setMesa(dao_mesa.queryForId(idmesa));
+                Thread thread2= new Thread(){
+                    @Override public void run() {
+                        try {
+                            comanda.setMesa((Mesa) dao_mesa.queryForId(idmesa));
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                };
+                thread2.start();
+                long delayMillis = 5000;
+                try {
+                    thread2.join(delayMillis);
+                    if (thread2.isAlive()) {}
+                } catch (InterruptedException e){}
+
+
                 d = sdf.parse(String.valueOf(dataabertura.getText()));
                 comanda.setData_abertura(d);
                 comanda.setData_abertura_long(d);
                 calculatotal();
-                dao_comanda.createOrUpdate(comanda);
-            } catch (SQLException | ParseException e) {
+                Thread thread3= new Thread(){
+                    @Override public void run() {
+                        try {
+                            dao_comanda.createOrUpdate(comanda);
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                };
+                thread3.start();
+                try {
+                    thread3.join(delayMillis);
+                    if (thread3.isAlive()) {}
+                } catch (InterruptedException e){}
+
+            } catch (ParseException e) {
                 e.printStackTrace();
             }
         }else{
@@ -624,43 +845,54 @@ public class Comanda_Pedido extends AppCompatActivity implements AdapterView.OnI
 
         total = 0;
         if(comanda.getId() != null) {
-            try {
-                comanda_itens = dao_comanda_item.queryBuilder().where().eq("comanda", comanda.getId()).query();
-                if (comanda_itens.size() > 0) {
-                    for (Comanda_Item item : comanda_itens) {
-                        total = total + item.getValor_total();
-                        if(item.getStatus().equals("PARCIAL")) {
-                            totalparcial ++;
-                        }
-                        if(item.getStatus().equals("ATENDIDO")) {
-                            totalatendido ++;
-                        }
-                        if(item.getStatus().equals("ABERTO")) {
-                            totalaberto ++;
-                        }
-                        totalitens++;
+            Thread thread3= new Thread(){
+                @Override public void run() {
+                    try {
+                        comanda_itens = dao_comanda_item.queryBuilder().where().eq("comanda", comanda.getId()).query();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
                     }
-                    //df.format(total);
-                    vltotal.setText(df.format(total));
-                    comanda.setValor_total(total);
-                }else{
-                    comanda.setValor_total(0);
-                    vltotal.setText(df.format(0));
                 }
-                adp_comandaItem = new Adp_ComandaItem(this, comanda_itens);
-                listView.setAdapter(adp_comandaItem);
-                if(totalparcial > 0 || (totalaberto != totalitens)){
-                    comanda.setStatus("PARCIAL");
+            };
+            thread3.start();
+            long delayMillis = 5000;
+            try {
+                thread3.join(delayMillis);
+                if (thread3.isAlive()) {}else{
+                    if (comanda_itens.size() > 0) {
+                        for (Comanda_Item item : comanda_itens) {
+                            total = total + item.getValor_total();
+                            if(item.getStatus().equals("PARCIAL")) {
+                                totalparcial ++;
+                            }
+                            if(item.getStatus().equals("ATENDIDO")) {
+                                totalatendido ++;
+                            }
+                            if(item.getStatus().equals("ABERTO")) {
+                                totalaberto ++;
+                            }
+                            totalitens++;
+                        }
+                        //df.format(total);
+                        vltotal.setText(df.format(total));
+                        comanda.setValor_total(total);
+                    }else{
+                        comanda.setValor_total(0);
+                        vltotal.setText(df.format(0));
+                    }
+                    adp_comandaItem = new Adp_ComandaItem(this, comanda_itens);
+                    listView.setAdapter(adp_comandaItem);
+                    if(totalparcial > 0 || (totalaberto != totalitens)){
+                        comanda.setStatus("PARCIAL");
+                    }
+                    if(totalatendido == totalitens){
+                        comanda.setStatus("ATENDIDO");
+                    }
+                    if(totalaberto == totalitens){
+                        comanda.setStatus("ABERTO");
+                    }
                 }
-                if(totalatendido == totalitens){
-                    comanda.setStatus("ATENDIDO");
-                }
-                if(totalaberto == totalitens){
-                    comanda.setStatus("ABERTO");
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            } catch (InterruptedException e){}
         }
     }
 

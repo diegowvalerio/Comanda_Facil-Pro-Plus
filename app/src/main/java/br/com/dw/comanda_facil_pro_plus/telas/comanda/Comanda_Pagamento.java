@@ -13,22 +13,27 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.material.textfield.TextInputEditText;
+import com.j256.ormlite.dao.Dao;
 
 import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.Date;
 
 import br.com.dw.comanda_facil_pro_plus.R;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda;
 import br.com.dw.comanda_facil_pro_plus.entidades.Comanda;
+import br.com.dw.comanda_facil_pro_plus.entidades.Comanda_Item;
+import br.com.dw.comanda_facil_pro_plus.entidades.Mesa;
+import br.com.dw.comanda_facil_pro_plus.entidades.Produto;
 
 public class Comanda_Pagamento extends AppCompatActivity {
 
     private TextInputEditText vltotal,vldesconto,vltroco,vlpago,vlrecebido;
-    DatabaseHelper banco;
     Comanda comanda = new Comanda();
-    Dao_Comanda dao_comanda;
+    final Conexao conexao = new Conexao();
+    Dao dao_comanda;
     double recebido = 0.00,troco = 0.00,pago = 0.00,desconto = 0.00;
     DecimalFormat df = new DecimalFormat("#,###.00");
     final Activity activity = this;
@@ -37,9 +42,9 @@ public class Comanda_Pagamento extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_comanda__pagamento);
 
-        banco = new DatabaseHelper(this);
         try {
-            dao_comanda = new Dao_Comanda(banco.getConnectionSource());
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_comanda = conexao.getDao(Comanda.class);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -212,15 +217,26 @@ public class Comanda_Pagamento extends AppCompatActivity {
                 mensagem.setMessage("Confirma o recebimento ?");
                 mensagem.setPositiveButton("Confimar", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
+                        comanda.setStatus("FECHADO");
+                        comanda.setData_recebimento(new Date());
+                        Thread thread= new Thread(){
+                            @Override public void run() {
+                                try {
+                                    dao_comanda.createOrUpdate(comanda);
+                                } catch (SQLException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        };
+                        thread.start();
+                        long delayMillis = 5000;
                         try {
-                            comanda.setStatus("FECHADO");
-                            comanda.setData_recebimento(new Date());
-                            dao_comanda.createOrUpdate(comanda);
-                            finish();
-                            Toast.makeText(activity, "Recebimento efetuado com sucesso!", Toast.LENGTH_SHORT).show();
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
+                            thread.join(delayMillis);
+                            if (thread.isAlive()) {}else{
+                                finish();
+                                Toast.makeText(activity, "Recebimento efetuado com sucesso!", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (InterruptedException e){}
                     }
                 });
                 mensagem.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
@@ -245,15 +261,26 @@ public class Comanda_Pagamento extends AppCompatActivity {
     }
 
     private void preenche(){
-        Bundle bundle = getIntent().getExtras();
+        final Bundle bundle = getIntent().getExtras();
         if (bundle != null && bundle.containsKey("idcomanda")) {
+            Thread thread= new Thread(){
+                @Override public void run() {
+                    try {
+                        comanda = (Comanda) dao_comanda.queryForId(bundle.getInt("idcomanda"));
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            thread.start();
+            long delayMillis = 5000;
             try {
-                comanda = dao_comanda.queryForId(bundle.getInt("idcomanda"));
-                vltotal.setText(df.format(comanda.getValor_total()));
+                thread.join(delayMillis);
+                if (thread.isAlive()) {}else{
+                    vltotal.setText(df.format(comanda.getValor_total()));
+                }
+            } catch (InterruptedException e){}
 
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
 

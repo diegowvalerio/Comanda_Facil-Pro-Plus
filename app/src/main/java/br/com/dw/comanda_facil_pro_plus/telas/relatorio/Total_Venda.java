@@ -14,6 +14,7 @@ import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.j256.ormlite.dao.Dao;
 
 import java.sql.SQLException;
 import java.text.DecimalFormat;
@@ -26,9 +27,11 @@ import java.util.List;
 import java.util.Locale;
 
 import br.com.dw.comanda_facil_pro_plus.R;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda;
 import br.com.dw.comanda_facil_pro_plus.entidades.Comanda;
+import br.com.dw.comanda_facil_pro_plus.entidades.Mesa;
 
 public class Total_Venda extends AppCompatActivity {
 
@@ -38,8 +41,10 @@ public class Total_Venda extends AppCompatActivity {
     String myFormat = "dd/MM/yyyy"; //In which you need put here
     SimpleDateFormat sdf = new SimpleDateFormat(myFormat, new Locale("pt","BR"));
 
-    DatabaseHelper banco;
-    Dao_Comanda dao_comanda;
+    final Conexao conexao = new Conexao();
+    long delayMillis = 5000;
+    Dao dao_comanda;
+
     List<Comanda> comadas = new ArrayList<>();
     PieChart totalvendapizza;
     @Override
@@ -47,13 +52,28 @@ public class Total_Venda extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_total__venda);
 
-        banco = new DatabaseHelper(this);
         try {
-            dao_comanda = new Dao_Comanda(banco.getConnectionSource());
-            comadas = dao_comanda.queryBuilder().where().between("data_abertura",calendario.getTime(),calendario2.getTime()).query();
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_comanda = conexao.getDao(Comanda.class);
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        Thread thread= new Thread(){
+            @Override public void run() {
+                try {
+                    comadas = dao_comanda.queryBuilder().where().between("data_abertura",calendario.getTime(),calendario2.getTime()).query();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
+        try {
+            thread.join(delayMillis);
+            if (thread.isAlive()) {}
+        } catch (InterruptedException e){}
+
         totalvendapizza = findViewById(R.id.totalvenda_pizza);
 
         data1 = findViewById(R.id.data1);
@@ -181,20 +201,32 @@ public class Total_Venda extends AppCompatActivity {
     public void entrada(){
         SimpleDateFormat dt = new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
 
-        Calendar c1 = Calendar.getInstance();
+        final Calendar c1 = Calendar.getInstance();
         c1.set(calendario.get(Calendar.YEAR), calendario.get(Calendar.MONTH), calendario.get(Calendar.DATE),00,00,00);
-        Calendar c2 = Calendar.getInstance();
+        final Calendar c2 = Calendar.getInstance();
         c2.set(calendario2.get(Calendar.YEAR), calendario2.get(Calendar.MONTH), calendario2.get(Calendar.DATE),23,59,59);
 
         try {
             Date d1 = dt.parse(dt.format(c1.getTime()));
             Date d2 = dt.parse(dt.format(c2.getTime()));
+            Thread thread= new Thread(){
+                @Override public void run() {
+                    try {
+                        comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).query();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            thread.start();
+            try {
+                thread.join(delayMillis);
+                if (thread.isAlive()) {}else{
+                    criapizza();
+                }
+            } catch (InterruptedException e){}
 
-            dao_comanda = new Dao_Comanda(banco.getConnectionSource());
-            comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).query();
-            criapizza();
-
-        } catch (SQLException | ParseException e) {
+        } catch (ParseException e) {
             e.printStackTrace();
         }
     }
@@ -202,20 +234,32 @@ public class Total_Venda extends AppCompatActivity {
     public void pesquisar(View view){
         SimpleDateFormat dt = new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
 
-        Calendar c1 = Calendar.getInstance();
+        final Calendar c1 = Calendar.getInstance();
         c1.set(calendario.get(Calendar.YEAR), calendario.get(Calendar.MONTH), calendario.get(Calendar.DATE),00,00,00);
-        Calendar c2 = Calendar.getInstance();
+        final Calendar c2 = Calendar.getInstance();
         c2.set(calendario2.get(Calendar.YEAR), calendario2.get(Calendar.MONTH), calendario2.get(Calendar.DATE),23,59,59);
 
         try {
             Date d1 = dt.parse(dt.format(c1.getTime()));
             Date d2 = dt.parse(dt.format(c2.getTime()));
+            Thread thread= new Thread(){
+                @Override public void run() {
+                    try {
+                        comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).query();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            thread.start();
+            try {
+                thread.join(delayMillis);
+                if (thread.isAlive()) {}else{
+                    criapizza();
+                }
+            } catch (InterruptedException e){}
 
-            dao_comanda = new Dao_Comanda(banco.getConnectionSource());
-            comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).query();
-            criapizza();
-
-        } catch (SQLException | ParseException e) {
+        } catch (ParseException e) {
             e.printStackTrace();
         }
     }

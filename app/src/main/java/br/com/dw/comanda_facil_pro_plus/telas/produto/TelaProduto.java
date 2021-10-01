@@ -35,12 +35,15 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import br.com.dw.comanda_facil_pro_plus.R;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Produto;
+import br.com.dw.comanda_facil_pro_plus.entidades.Mesa;
 import br.com.dw.comanda_facil_pro_plus.entidades.Produto;
 
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
+import com.j256.ormlite.dao.Dao;
 
 public class TelaProduto extends AppCompatActivity {
 
@@ -50,8 +53,6 @@ public class TelaProduto extends AppCompatActivity {
     CheckBox p_status;
     ImageView p_imagem;
     Produto produto = new Produto();
-    Dao_Produto dao_produto;
-    DatabaseHelper banco;
     static final int CAMERA = 1;
     static final int GALERIA = 2;
     static final int REQUEST_CODE_WRITE_EXTERNAL_STORAGE_PERMISSION=1;
@@ -61,15 +62,18 @@ public class TelaProduto extends AppCompatActivity {
     String currentPhotoPath;
     Uri photoURI;
 
+    final Conexao conexao = new Conexao();
+    Dao dao_produto;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_produto);
 
-        banco = new DatabaseHelper(this);
         try {
-            dao_produto = new Dao_Produto(banco.getConnectionSource());
-        }catch (SQLException e){
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_produto = conexao.getDao(Produto.class);
+        } catch (SQLException e) {
             e.printStackTrace();
         }
 
@@ -210,6 +214,7 @@ public class TelaProduto extends AppCompatActivity {
         options.inJustDecodeBounds = false;
 
         Bitmap bitmap =BitmapFactory.decodeFile(picturePath,options);
+
         Matrix matrix = new Matrix();
         switch (orientation) {
             case ExifInterface.ORIENTATION_NORMAL:
@@ -256,7 +261,7 @@ public class TelaProduto extends AppCompatActivity {
         //Bitmap bitmap1 = ((BitmapDrawable) image.getDrawable()).getBitmap();
         Bitmap bitmap1 = bitmaps(image.getDrawable());
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        bitmap1.compress( Bitmap.CompressFormat.JPEG, 50, stream );
+        bitmap1.compress( Bitmap.CompressFormat.JPEG, 100, stream );
         byte[] byteArray = stream.toByteArray();
         produto.setImagem(byteArray);
     }
@@ -287,9 +292,23 @@ public class TelaProduto extends AppCompatActivity {
             produto.setStatus(p_status.isChecked());
             //produto.setImagem(imageViewToByte(p_imagem));
             try{
-               dao_produto.createOrUpdate(produto);
-                Toast.makeText(this, "Produto Salvo com Sucesso ! ", Toast.LENGTH_SHORT).show();
-               finish();
+                Thread thread= new Thread(){
+                    @Override public void run() {
+                        try {
+                            dao_produto.createOrUpdate(produto);
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                };
+                thread.start();
+                long delayMillis = 5000;
+                try {thread.join(delayMillis);
+                    if (thread.isAlive()) {}else{
+                        Toast.makeText(this, "Produto Salvo com Sucesso ! ", Toast.LENGTH_SHORT).show();
+                        finish();
+                    }
+                } catch (InterruptedException e){}
             } catch (Exception e) {
                 e.printStackTrace();
                 Toast.makeText(this, "Erro, não foi possivel salvar produto", Toast.LENGTH_SHORT).show();
@@ -326,21 +345,31 @@ public class TelaProduto extends AppCompatActivity {
 
     public void preencheproduto(){
         if( v == 0) {
-            Bundle bundle = getIntent().getExtras();
+            final Bundle bundle = getIntent().getExtras();
             if (bundle != null && bundle.containsKey("id")) {
-                try {
-                    produto = dao_produto.queryForId(bundle.getInt("id"));
-                    if (!produto.getId().equals("")) {
-                        p_descricao.setText(produto.getDescricao());
-                        p_valor.setText(Double.toString(produto.getValor()));
-                        p_status.setChecked(produto.isStatus());
-                        p_ean.setText(produto.getEan());
-                        p_imagem.setImageBitmap(BitmapFactory.decodeByteArray(produto.getImagem(), 0, produto.getImagem().length));
-                        v = 1;
+                Thread thread= new Thread(){
+                    @Override public void run() {
+                        try {
+                            produto = (Produto) dao_produto.queryForId(bundle.getInt("id"));
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
                     }
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
+                };
+                thread.start();
+                long delayMillis = 5000;
+                try {thread.join(delayMillis);
+                    if (thread.isAlive()) {}else{
+                        if (!produto.getId().equals("")) {
+                            p_descricao.setText(produto.getDescricao());
+                            p_valor.setText(Double.toString(produto.getValor()));
+                            p_status.setChecked(produto.isStatus());
+                            p_ean.setText(produto.getEan());
+                            p_imagem.setImageBitmap(BitmapFactory.decodeByteArray(produto.getImagem(), 0, produto.getImagem().length));
+                            v = 1;
+                        }
+                    }
+                } catch (InterruptedException e){}
             }
         }
     }

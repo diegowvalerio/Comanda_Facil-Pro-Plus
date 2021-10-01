@@ -17,7 +17,7 @@ public class Produto {
     private String ean;
     @DatabaseField(dataType = DataType.BOOLEAN)
     private boolean status;
-    @DatabaseField(dataType= DataType.BYTE_ARRAY)
+    @DatabaseField(dataType= DataType.BYTE_ARRAY, columnDefinition = "LONGBLOB")
     private byte[] imagem;
 
 

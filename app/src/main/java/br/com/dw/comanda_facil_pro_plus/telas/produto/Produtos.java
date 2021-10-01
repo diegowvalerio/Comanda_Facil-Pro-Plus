@@ -23,6 +23,7 @@ import android.widget.Toast;
 
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
+import com.j256.ormlite.dao.Dao;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -30,17 +31,13 @@ import java.util.List;
 
 import br.com.dw.comanda_facil_pro_plus.R;
 import br.com.dw.comanda_facil_pro_plus.adapters.Adp_produtos;
-import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
-import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda_Item;
-import br.com.dw.comanda_facil_pro_plus.dao.Dao_Produto;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.entidades.Comanda_Item;
+import br.com.dw.comanda_facil_pro_plus.entidades.Mesa;
 import br.com.dw.comanda_facil_pro_plus.entidades.Produto;
 
 public class Produtos extends AppCompatActivity  implements  AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
     private ListView listView;
-    private DatabaseHelper banco;
-    private Dao_Produto dao_produto;
-    private Dao_Comanda_Item dao_comanda_item;
     private List<Comanda_Item> comanda_items = new ArrayList<>();
     private Produto produto = new Produto();
     private Adp_produtos adp_produtos;
@@ -53,18 +50,22 @@ public class Produtos extends AppCompatActivity  implements  AdapterView.OnItemC
     final Activity activity = this;
     int v =0;
 
+    final Conexao conexao = new Conexao();
+    Dao dao_produto;
+    Dao dao_comanda_item;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_produtos);
 
-        banco = new DatabaseHelper(this);
         try {
-            dao_comanda_item = new Dao_Comanda_Item(banco.getConnectionSource());
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_comanda_item = conexao.getDao(Mesa.class);
+            dao_produto = conexao.getDao(Produto.class);
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
 
         filtro = findViewById(R.id.p_filtro);
         filtro_ativo = findViewById(R.id.filtro_ativo);
@@ -105,35 +106,48 @@ public class Produtos extends AppCompatActivity  implements  AdapterView.OnItemC
     }
 
     public void preenchelista(){
+        Thread thread= new Thread(){
+            @Override public void run() {
+                try {
+                    produtos = dao_produto.queryForAll();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
+        long delayMillis = 5000;
+        try {
+            thread.join(delayMillis);
+            if (thread.isAlive()) {
+                Toast.makeText(this, "Execidido tempo de conexção com servidor !", Toast.LENGTH_SHORT).show();
+            }
+        } catch (InterruptedException e){
+
+        }
         if( v == 0) {
 
-            try {
-                dao_produto = new Dao_Produto(banco.getConnectionSource());
-                produtos = dao_produto.queryForAll();
-                Pesquisar_ativos();
-                adp_produtos = new Adp_produtos(this, produtos_filtrados);
-                listView.setAdapter(adp_produtos);
-                listView.setTextFilterEnabled(true);
-                filtro.addTextChangedListener(new TextWatcher() {
-                    @Override
-                    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                    }
+            Pesquisar_ativos();
+            adp_produtos = new Adp_produtos(this, produtos_filtrados);
+            listView.setAdapter(adp_produtos);
+            listView.setTextFilterEnabled(true);
+            filtro.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
 
-                    @Override
-                    public void onTextChanged(CharSequence s, int start, int before, int count) {
-                        Pesquisar();
-                        adp_produtos = new Adp_produtos(Produtos.this, produtos_filtrados);
-                        listView.setAdapter(adp_produtos);
-                    }
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    Pesquisar();
+                    adp_produtos = new Adp_produtos(Produtos.this, produtos_filtrados);
+                    listView.setAdapter(adp_produtos);
+                }
 
-                    @Override
-                    public void afterTextChanged(Editable s) {
+                @Override
+                public void afterTextChanged(Editable s) {
 
-                    }
-                });
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+                }
+            });
         }
     }
 
@@ -197,7 +211,21 @@ public class Produtos extends AppCompatActivity  implements  AdapterView.OnItemC
                 if(arg1 == 0){
                     try {
                         comanda_items.clear();
-                        comanda_items = dao_comanda_item.queryBuilder().where().eq("produto",p.getId()).query();
+                        Thread thread= new Thread(){
+                            @Override public void run() {
+                                try {
+                                    comanda_items = dao_comanda_item.queryBuilder().where().eq("produto",p.getId()).query();
+                                } catch (SQLException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        };
+                        thread.start();
+                        long delayMillis = 5000;
+                        try {thread.join(delayMillis);
+                            if (thread.isAlive()) {}
+                        } catch (InterruptedException e){}
+
                         if(comanda_items.size() >0){
                             Toast.makeText(activity, "Produto já utilizado em comandas, não é possível excluir !", Toast.LENGTH_SHORT).show();
                         }else {

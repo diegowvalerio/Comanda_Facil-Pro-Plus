@@ -17,6 +17,7 @@ import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.j256.ormlite.dao.Dao;
 
 import java.sql.SQLException;
 import java.text.DecimalFormat;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 
 import br.com.dw.comanda_facil_pro_plus.R;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Mesa;
@@ -43,11 +45,12 @@ public class Total_Venda_Mesa extends AppCompatActivity {
     String myFormat = "dd/MM/yyyy"; //In which you need put here
     SimpleDateFormat sdf = new SimpleDateFormat(myFormat, new Locale("pt","BR"));
 
-    DatabaseHelper banco;
-    Dao_Comanda dao_comanda;
-    List<Comanda> comadas = new ArrayList<>();
+    final Conexao conexao = new Conexao();
+    long delayMillis = 5000;
+    Dao dao_comanda;
+    Dao dao_mesa;
 
-    Dao_Mesa dao_mesa;
+    List<Comanda> comadas = new ArrayList<>();
     List<Mesa> mesas = new ArrayList<>();
 
     BarChart totalvendapizza;
@@ -56,13 +59,14 @@ public class Total_Venda_Mesa extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_total__venda__mesa);
 
-        banco = new DatabaseHelper(this);
         try {
-            dao_comanda = new Dao_Comanda(banco.getConnectionSource());
-            dao_mesa = new Dao_Mesa(banco.getConnectionSource());
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_comanda = conexao.getDao(Comanda.class);
+            dao_mesa = conexao.getDao(Mesa.class);
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         totalvendapizza = findViewById(R.id.totalvenda_pizza_mesa);
 
         data1 = findViewById(R.id.data1);
@@ -121,18 +125,28 @@ public class Total_Venda_Mesa extends AppCompatActivity {
     //como criar o grafico
     //https://www.youtube.com/watch?v=vhKtbECeazQ&ab_channel=ChiragKachhadiya
     public void criapizza(){
+
+        Thread thread= new Thread(){
+            @Override public void run() {
+                try {
+                    mesas = dao_mesa.queryForAll();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
         try {
-            mesas = dao_mesa.queryForAll();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+            thread.join(delayMillis);
+            if (thread.isAlive()) {}
+        } catch (InterruptedException e){}
 
         SimpleDateFormat dt = new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
 
-        Calendar c1 = Calendar.getInstance();
+        final Calendar c1 = Calendar.getInstance();
         c1.set(calendario.get(Calendar.YEAR), calendario.get(Calendar.MONTH),calendario.get(Calendar.DATE),00,00,00);
 
-        Calendar c2 = Calendar.getInstance();
+        final Calendar c2 = Calendar.getInstance();
         c2.set(calendario2.get(Calendar.YEAR), calendario2.get(Calendar.MONTH), calendario2.get(Calendar.DATE),23,59,59);
 
         final DecimalFormat df = new DecimalFormat("R$ #,###.00");
@@ -141,15 +155,30 @@ public class Total_Venda_Mesa extends AppCompatActivity {
 
         if(mesas.size()>0){
             int i = 0;
-            for(Mesa m:mesas){
+            for(final Mesa m:mesas){
                 double total = 0;
                 comadas.clear();
                 try {
                     Date d1 = dt.parse(dt.format(c1.getTime()));
                     Date d2 = dt.parse(dt.format(c2.getTime()));
-                    comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).and().eq("mesa",m.getId()).query();
+
+                    Thread thread2= new Thread(){
+                        @Override public void run() {
+                            try {
+                                comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).and().eq("mesa",m.getId()).query();
+                            } catch (SQLException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    };
+                    thread2.start();
+                    try {
+                        thread2.join(delayMillis);
+                        if (thread2.isAlive()) {}
+                    } catch (InterruptedException e){}
+
                     //Toast.makeText(this, ""+c1.getTimeInMillis(), Toast.LENGTH_SHORT).show();
-                } catch (SQLException | ParseException e) {
+                } catch (ParseException e) {
                     e.printStackTrace();
                 }
                 if(comadas.size()>0){

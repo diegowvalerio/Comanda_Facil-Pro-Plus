@@ -17,6 +17,7 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.j256.ormlite.dao.Dao;
 
 import java.sql.SQLException;
 import java.text.DecimalFormat;
@@ -25,6 +26,7 @@ import java.util.Calendar;
 import java.util.List;
 
 import br.com.dw.comanda_facil_pro_plus.R;
+import br.com.dw.comanda_facil_pro_plus.banco.Conexao;
 import br.com.dw.comanda_facil_pro_plus.banco.DatabaseHelper;
 import br.com.dw.comanda_facil_pro_plus.dao.Dao_Comanda;
 import br.com.dw.comanda_facil_pro_plus.entidades.Comanda;
@@ -35,8 +37,9 @@ public class Total_Venda_Mensal extends AppCompatActivity {
     EditText ed_mes;
     EditText ed_ano;
 
-    DatabaseHelper banco;
-    Dao_Comanda dao_comanda;
+    final Conexao conexao = new Conexao();
+    long delayMillis = 5000;
+    Dao dao_comanda;
     List<Comanda> comadas = new ArrayList<>();
 
     int mesdefaul,anodefault;
@@ -70,9 +73,9 @@ public class Total_Venda_Mensal extends AppCompatActivity {
         mesdefaul = calendar.get(Calendar.MONTH);
         anodefault = calendar.get(Calendar.YEAR);
 
-        banco = new DatabaseHelper(this);
         try {
-            dao_comanda = new Dao_Comanda(banco.getConnectionSource());
+            conexao.conexao(getApplicationContext()).initialize();
+            dao_comanda = conexao.getDao(Comanda.class);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -91,19 +94,29 @@ public class Total_Venda_Mensal extends AppCompatActivity {
         final DecimalFormat df = new DecimalFormat("R$ #,###.00");
 
         comadas.clear();
-        Calendar c1 = Calendar.getInstance();
+        final Calendar c1 = Calendar.getInstance();
         c1.set(anodefault,mesdefaul,01,00,00,00);
 
-        Calendar c2 = Calendar.getInstance();
+        final Calendar c2 = Calendar.getInstance();
         c2.set(anodefault, mesdefaul, c1.get(Calendar.DAY_OF_MONTH),23,59,59);
         c2.set(Calendar.DAY_OF_MONTH, c1.getActualMaximum(Calendar.DAY_OF_MONTH));
 
         ArrayList<Entry> linhas = new ArrayList<>();
+        Thread thread= new Thread(){
+            @Override public void run() {
+                try {
+                    comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).query();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
         try {
-            comadas = dao_comanda.queryBuilder().where().between("data_abertura_long",c1.getTime(),c2.getTime()).query();
-        }catch (SQLException e){
-            e.printStackTrace();
-        }
+            thread.join(delayMillis);
+            if (thread.isAlive()) {}
+        } catch (InterruptedException e){}
+
 
         if(comadas.size()>0){
             for(int i =1;i <= c2.get(Calendar.DAY_OF_MONTH);i++){

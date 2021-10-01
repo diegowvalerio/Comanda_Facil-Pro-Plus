@@ -16,7 +16,7 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="Pixel_2_API_24" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="901ae4b0" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
@@ -66,7 +66,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="android.sdk.path" value="$USER_HOME$/AppData/Local/Android/Sdk" />
     <property name="last_directory_selection" value="$PROJECT_DIR$/app/src/main/res/drawable" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/app/src/main/res/drawable" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/app/src/main/res" />
     <property name="project.structure.last.edited" value="Dependencies" />
     <property name="project.structure.proportion" value="0.17" />
     <property name="project.structure.side.proportion" value="0.2" />
@@ -89,11 +89,11 @@
       <recent name="br.com.dw.comanda_facil.telas.relatorio" />
     </key>
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Documentos\GitHub\Comanda_Facil Pro Plus\app\src\main\res" />
       <recent name="D:\Documentos\GitHub\Comanda_Facil Pro Plus\app\src\main\res\drawable" />
       <recent name="D:\Documentos\GitHub\Comanda_Facil Pro Plus\app\src\main\res\mipmap-xhdpi" />
       <recent name="D:\Documentos\GitHub\Comanda_Facil Pro Plus\app\src\main\java\br\com\dw\comanda_facil_pro_plus\util" />
       <recent name="D:\Documentos\GitHub\Comanda_Facil Pro\app\src\main\res\mipmap-anydpi-v26" />
-      <recent name="D:\Documentos\GitHub\Comanda_Facil Pro\app\src\main\res\drawable" />
     </key>
     <key name="android.template.-1759909099">
       <recent name="br.com.dw.comanda_facil.telas.relatorio" />
@@ -108,6 +108,7 @@
       <recent name="br.com.dw.comanda_facil.telas.comanda" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Documentos\GitHub\Comanda_Facil Pro Plus\app\src\main\assets" />
       <recent name="D:\Documentos\GitHub\Comanda_Facil Pro Plus\app\src\main\java\br\com\dw\comanda_facil_pro_plus\lib" />
       <recent name="D:\Documentos\GitHub\Comanda_Facil\app\src\main\res\drawable" />
     </key>
@@ -230,10 +231,10 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="690" y="266" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1632935802686" />
-    <state x="540" y="274" key="AndroidCreateResourceDirectoryDialog" timestamp="1627667520410">
+    <state x="540" y="274" key="AndroidCreateResourceDirectoryDialog" timestamp="1633102070983">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="540" y="274" key="AndroidCreateResourceDirectoryDialog/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1627667520410" />
+    <state x="540" y="274" key="AndroidCreateResourceDirectoryDialog/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633102070983" />
     <state x="447" y="225" key="AndroidCreateResourceFileDialog" timestamp="1628859603880">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -244,30 +245,30 @@
     </state>
     <state x="526" y="192" key="FileChooserDialogImpl/0.0.1366.728@0.0.1366.728" timestamp="1627845696504" />
     <state x="740" y="274" key="FileChooserDialogImpl/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1632334567895" />
-    <state width="1877" height="152" key="GridCell.Tab.0.bottom" timestamp="1633012535110">
+    <state width="1877" height="152" key="GridCell.Tab.0.bottom" timestamp="1633116444797">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state width="1323" height="166" key="GridCell.Tab.0.bottom/0.0.1366.728@0.0.1366.728" timestamp="1627948024848" />
     <state width="1877" height="152" key="GridCell.Tab.0.bottom/0.0.1920.1040/-1920.0.1920.1040@-1920.0.1920.1040" timestamp="1629914110504" />
-    <state width="1877" height="152" key="GridCell.Tab.0.bottom/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633012535110" />
-    <state width="1877" height="152" key="GridCell.Tab.0.center" timestamp="1633012535110">
+    <state width="1877" height="152" key="GridCell.Tab.0.bottom/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633116444797" />
+    <state width="1877" height="152" key="GridCell.Tab.0.center" timestamp="1633116444797">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state width="1323" height="166" key="GridCell.Tab.0.center/0.0.1366.728@0.0.1366.728" timestamp="1627948024848" />
     <state width="1877" height="152" key="GridCell.Tab.0.center/0.0.1920.1040/-1920.0.1920.1040@-1920.0.1920.1040" timestamp="1629914110504" />
-    <state width="1877" height="152" key="GridCell.Tab.0.center/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633012535110" />
-    <state width="1877" height="152" key="GridCell.Tab.0.left" timestamp="1633012535110">
+    <state width="1877" height="152" key="GridCell.Tab.0.center/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633116444797" />
+    <state width="1877" height="152" key="GridCell.Tab.0.left" timestamp="1633116444797">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state width="1323" height="166" key="GridCell.Tab.0.left/0.0.1366.728@0.0.1366.728" timestamp="1627948024848" />
     <state width="1877" height="152" key="GridCell.Tab.0.left/0.0.1920.1040/-1920.0.1920.1040@-1920.0.1920.1040" timestamp="1629914110504" />
-    <state width="1877" height="152" key="GridCell.Tab.0.left/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633012535110" />
-    <state width="1877" height="152" key="GridCell.Tab.0.right" timestamp="1633012535110">
+    <state width="1877" height="152" key="GridCell.Tab.0.left/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633116444797" />
+    <state width="1877" height="152" key="GridCell.Tab.0.right" timestamp="1633116444797">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state width="1323" height="166" key="GridCell.Tab.0.right/0.0.1366.728@0.0.1366.728" timestamp="1627948024848" />
     <state width="1877" height="152" key="GridCell.Tab.0.right/0.0.1920.1040/-1920.0.1920.1040@-1920.0.1920.1040" timestamp="1629914110504" />
-    <state width="1877" height="152" key="GridCell.Tab.0.right/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633012535110" />
+    <state width="1877" height="152" key="GridCell.Tab.0.right/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1633116444797" />
     <state x="776" y="297" key="chooseDestDirectoryDialog" timestamp="1633001908324">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
